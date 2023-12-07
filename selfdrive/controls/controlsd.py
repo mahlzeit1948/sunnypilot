@@ -434,8 +434,8 @@ class Controls:
       self.events.add(EventName.deviceFalling)
     if not self.sm['liveLocationKalman'].inputsOK:
       self.events.add(EventName.locationdTemporaryError)
-    if not self.sm['liveParameters'].valid and not TESTING_CLOSET and (not SIMULATION or REPLAY):
-      self.events.add(EventName.paramsdTemporaryError)
+    #if not self.sm['liveParameters'].valid and not TESTING_CLOSET and (not SIMULATION or REPLAY):
+    #  self.events.add(EventName.paramsdTemporaryError)
 
     # conservative HW alert. if the data or frequency are off, locationd will throw an error
     if any((self.sm.frame - self.sm.rcv_frame[s])*DT_CTRL > 10. for s in self.sensor_packets):
