@@ -36,7 +36,7 @@ force_wifi = os.getenv("FORCEWIFI") is not None
 force_wifi = True #mahlzeit temp
 fake_upload = os.getenv("FAKEUPLOAD") is not None
 
-OFFROAD_TRANSITION_TIMEOUT = 900.  # wait until offroad for 15 minutes before allowing uploads
+OFFROAD_TRANSITION_TIMEOUT = 60.  #mahlzeit: 1 minute # wait until offroad for 15 minutes before allowing uploads
 
 
 class FakeRequest:
@@ -134,17 +134,17 @@ class Uploader:
   def next_file_to_upload(self, metered: bool) -> tuple[str, str, str] | None:
     upload_files = list(self.list_upload_files(metered))
 
-    for name, key, fn in upload_files:
-      if any(f in fn for f in self.immediate_folders):
-        return name, key, fn
+    #for name, key, fn in upload_files:
+    #  if any(f in fn for f in self.immediate_folders):
+    #    return name, key, fn
     #begin mahlzeit
     for name, key, fn in upload_files:
       if name[-4:] == "hevc":
         return (name, key, fn)
     #end mahlzeit  
-    for name, key, fn in upload_files:
-      if name in self.immediate_priority:
-        return name, key, fn
+    #for name, key, fn in upload_files:
+    #  if name in self.immediate_priority:
+    #    return name, key, fn
 
     return None
 
@@ -160,7 +160,7 @@ class Uploader:
           self.status_code = 200
           self.request = FakeRequest()
       self.last_resp = FakeResponse()
-      return
+      return FakeResponse()
 
     try:
       #print('connecting to ftp')
@@ -190,7 +190,7 @@ class Uploader:
           self.status_code = 201
           self.request = FakeRequest()
       self.last_resp = FakeResponse()
-      return
+      return FakeResponse()
 
     except ftplib.error_perm as e:
       #print('error during ftp')
@@ -199,7 +199,7 @@ class Uploader:
           self.status_code = 404
           self.request = FakeRequest()
       self.last_resp = FakeResponse()
-      return      
+      return self.last_resp
       #self.last_resp.status_code = 404
       self.last_exc = 'dummy'
       raise
