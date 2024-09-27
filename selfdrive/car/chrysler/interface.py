@@ -87,7 +87,7 @@ class CarInterface(CarInterfaceBase):
     if 0x4FF in fingerprint[0]:
       ret.spFlags |= ChryslerFlagsSP.SP_WP_S20.value
       ret.minSteerSpeed = 0.0
-    ret.minSteerSpeed = 0.0
+    #ret.minSteerSpeed = 0.0
     return ret
 
   def _update(self, c):
