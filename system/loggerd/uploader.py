@@ -12,6 +12,10 @@ import datetime
 from typing import BinaryIO
 from collections.abc import Iterator
 
+# begin mahlzeit .
+from ftplib import FTP
+# end mahlzeit
+
 from cereal import log
 import cereal.messaging as messaging
 from openpilot.common.api import Api
@@ -31,7 +35,7 @@ allow_sleep = bool(os.getenv("UPLOADER_SLEEP", "1"))
 force_wifi = os.getenv("FORCEWIFI") is not None
 fake_upload = os.getenv("FAKEUPLOAD") is not None
 
-OFFROAD_TRANSITION_TIMEOUT = 900.  # wait until offroad for 15 minutes before allowing uploads
+OFFROAD_TRANSITION_TIMEOUT = 60.  #mahlzeit: 1 minute # wait until offroad for 15 minutes before allowing uploads
 
 
 class FakeRequest:
@@ -129,16 +133,79 @@ class Uploader:
   def next_file_to_upload(self, metered: bool) -> tuple[str, str, str] | None:
     upload_files = list(self.list_upload_files(metered))
 
+    #for name, key, fn in upload_files:
+    #  if any(f in fn for f in self.immediate_folders):
+    #    return name, key, fn
+    #begin mahlzeit
     for name, key, fn in upload_files:
-      if any(f in fn for f in self.immediate_folders):
-        return name, key, fn
-
-    for name, key, fn in upload_files:
-      if name in self.immediate_priority:
-        return name, key, fn
+      if name[-4:] == "hevc":
+        return (name, key, fn)
+    #end mahlzeit  
+    #for name, key, fn in upload_files:
+    #  if name in self.immediate_priority:
+    #    return name, key, fn
 
     return None
+# begin mahlzeit
+  def do_upload_mahlzeit(self, key, fn):
+    #print('mahlzeit upload')
+    if key[-4:] != 'hevc':
+      #print('extension is not hevc')
+      #print(key)
+      #self.status_code = 200
+      class FakeResponse():
+        def __init__(self):
+          self.status_code = 200
+          self.request = FakeRequest()
+      self.last_resp = FakeResponse()
+      return FakeResponse()
 
+    try:
+      #print('connecting to ftp')
+      ftp = FTP(host = '192.168.0.202', user = 'comma2', passwd = 'comma2')
+      ftp.cwd('/dashcam')
+      #check if folder exists
+      folder_tmp = (key[:key.rfind('/')])
+      folder = folder_tmp[0:20] #only one folder per drive
+      #print('folder')
+      print (folder)
+      file = key[key.rfind('/')+1:]
+      file = str(folder_tmp[folder_tmp.rfind('-')+1:]).zfill(4) + '-' + file  #pad with leading zeroes
+      #print('file')
+      #print(file)
+      if not folder in ftp.nlst():
+        #create folder
+        ftp.mkd(folder)
+
+      #switch to folder
+      ftp.cwd(folder)
+
+      #upload file
+      ftpcommand = "STOR %s"%file;
+      ftp.storbinary(ftpcommand, open(fn, 'rb'))
+      class FakeResponse():
+        def __init__(self):
+          self.status_code = 201
+          self.request = FakeRequest()
+      self.last_resp = FakeResponse()
+      return FakeResponse()
+
+    except ftplib.error_perm as e:
+      #print('error during ftp')
+      class FakeResponse():
+        def __init__(self):
+          self.status_code = 404
+          self.request = FakeRequest()
+      self.last_resp = FakeResponse()
+      return self.last_resp
+      #self.last_resp.status_code = 404
+      self.last_exc = 'dummy'
+      raise
+
+    finally:
+      ftp.quit()
+
+# end mahlzeit     
   def do_upload(self, key: str, fn: str):
     url_resp = self.api.get("v1.4/" + self.dongle_id + "/upload_url/", timeout=10, path=key, access_token=self.api.get_token())
     if url_resp.status_code == 412:
@@ -183,7 +250,7 @@ class Uploader:
       stat = None
       last_exc = None
       try:
-        stat = self.do_upload(key, fn)
+        stat = self.do_upload_mahlzeit(key, fn) # mahlzeit self.do_upload(key, fn)
       except Exception as e:
         last_exc = (e, traceback.format_exc())
 
