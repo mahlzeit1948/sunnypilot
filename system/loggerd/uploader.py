@@ -164,7 +164,17 @@ class Uploader:
       ftp.cwd('/dashcam')
       #check if folder exists
       folder_tmp = (key[:key.rfind('/')])
-      folder = folder_tmp[0:20] #only one folder per drive
+      #folder = folder_tmp[0:20] #only one folder per drive
+      folder_id = folder_tmp[0:20] #only one folder per drive
+      # convert hex route name to datetime using file creation time
+      if folder_id[4:5] == '-' and folder_id[7:8] == '-':
+        # already a datetime format like 2024-01-23--14-30-45
+        folder = folder_id
+      else:
+        # hex format like 0000029d--f5cf7911f1, use file creation time
+        ctime = os.path.getctime(fn)
+        folder = datetime.datetime.fromtimestamp(ctime).strftime("%Y-%m-%d--%H-%M-%S")
+      print(folder)
       #print('folder')
       print (folder)
       file = key[key.rfind('/')+1:]
