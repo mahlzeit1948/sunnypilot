@@ -86,7 +86,7 @@ class Uploader:
 
     # stats for last successfully uploaded file
     self.last_filename = ""
-
+    self.route_folder_cache = {}  # maps route_id -> datetime folder name
     self.immediate_folders = ["crash/", "boot/"]
     self.immediate_priority = {"qlog": 0, "qlog.zst": 0, "qcamera.ts": 1}
 
@@ -162,19 +162,18 @@ class Uploader:
       #print('connecting to ftp')
       ftp = FTP(host = '192.168.0.202', user = 'comma2', passwd = 'comma2')
       ftp.cwd('/dashcam')
-      #check if folder exists
       folder_tmp = (key[:key.rfind('/')])
-      #folder = folder_tmp[0:20] #only one folder per drive
-      folder_id = folder_tmp[0:20] #only one folder per drive
-      # convert hex route name to datetime using file creation time
-      if folder_id[4:5] == '-' and folder_id[7:8] == '-':
-        # already a datetime format like 2024-01-23--14-30-45
-        folder = folder_id
+      route_id = folder_tmp[0:20]
+      if route_id in self.route_folder_cache:
+        folder = self.route_folder_cache[route_id]
       else:
-        # hex format like 0000029d--f5cf7911f1, use file creation time
-        ctime = os.path.getctime(fn)
-        folder = datetime.datetime.fromtimestamp(ctime).strftime("%Y-%m-%d--%H-%M-%S")
-      print(folder)
+        if route_id[4:5] == '-' and route_id[7:8] == '-':
+          folder = route_id
+        else:
+          ctime = os.path.getctime(fn)
+          folder =  datetime.datetime.fromtimestamp(ctime).strftime("%Y-%m-%d--%H-%M-%S")
+        self.route_folder_cache[route_id] = folder
+        print(f"New route: {route_id} -> {folder}")
       #print('folder')
       print (folder)
       file = key[key.rfind('/')+1:]
