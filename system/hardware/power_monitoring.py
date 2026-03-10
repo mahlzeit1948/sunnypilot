@@ -1,5 +1,6 @@
 import time
 import threading
+from pathlib import Path
 
 from openpilot.common.params import Params
 from openpilot.system.hardware import HARDWARE
@@ -7,6 +8,8 @@ from openpilot.common.swaglog import cloudlog
 from openpilot.system.statsd import statlog
 
 CAR_VOLTAGE_LOW_PASS_K = 0.011 # LPF gain for 45s tau (dt/tau / (dt/tau + 1))
+
+FTP_UPLOAD_LOCK = Path("/tmp/ftp_upload.lock")
 
 # While driving, a battery charges completely in about 30-60 minutes
 CAR_BATTERY_CAPACITY_uWh = 30e6
@@ -122,6 +125,10 @@ class PowerMonitoring:
   # See if we need to shutdown
   def should_shutdown(self, ignition: bool, in_car: bool, offroad_timestamp: float | None, started_seen: bool):
     if offroad_timestamp is None:
+      return False
+
+    if FTP_UPLOAD_LOCK.exists():
+      cloudlog.info("power_monitoring: FTP upload in progress, suppressing shutdown")
       return False
 
     now = time.monotonic()

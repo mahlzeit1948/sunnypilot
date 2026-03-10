@@ -20,7 +20,10 @@ from openpilot.system.loggerd.xattr_cache import getxattr, setxattr
 from openpilot.common.swaglog import cloudlog
 # begin mahlzeit .
 from ftplib import FTP
+from pathlib import Path
 # end mahlzeit
+
+FTP_UPLOAD_LOCK = Path("/tmp/ftp_upload.lock")
 
 NetworkType = log.DeviceState.NetworkType
 UPLOAD_ATTR_NAME = 'user.upload'
@@ -310,6 +313,7 @@ def main(exit_event: threading.Event = None) -> None:
     cloudlog.exception("failed to set core affinity")
 
   clear_locks(Paths.log_root())
+  FTP_UPLOAD_LOCK.unlink(missing_ok=True)  # clean up stale lock from previous run
 
   params = Params()
   dongle_id = params.get("DongleId")
@@ -331,8 +335,10 @@ def main(exit_event: threading.Event = None) -> None:
         time.sleep(60 if offroad else 5)
       continue
 
+    FTP_UPLOAD_LOCK.touch()
     success = uploader.step(sm['deviceState'].networkType.raw, sm['deviceState'].networkMetered)
     if success is None:
+      FTP_UPLOAD_LOCK.unlink(missing_ok=True)  # queue empty, safe to shut down
       backoff = 60 if offroad else 5
     elif success:
       backoff = 0.1
